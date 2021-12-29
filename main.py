@@ -1,5 +1,6 @@
 from math import comb, e
 from matplotlib import pyplot as plt
+import numpy as np
 
 # CONSTANTS
 COOPERATOR = "C"
@@ -24,8 +25,8 @@ gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
 c_R = c * b_R
 c_P = c * b_P
 beta = 10
-h = 0
-mu = 1/Z
+h = 0.0
+mu = 1 / Z
 
 
 def heaviside(k):
@@ -39,7 +40,7 @@ def payoff(j_R, j_P, X, k):
         else:
             b_strat = b_P
 
-        theta = heaviside(c_R*j_R + c_P*j_P - M*c*b)
+        theta = heaviside(c_R * j_R + c_P * j_P - M * c * b)
         return b_strat * (theta + (1 - r) * (1 - theta))
     else:
         if k is RICH:
@@ -68,11 +69,11 @@ def fitness(i_R, i_P, X, k):
             mul *= comb(Z + x - i_R - i_P, N - 1 - j_R - j_P)
             mul *= payoff(j_R + m, j_P + n, X, k)
             sum_ += mul
-    return comb(Z - 1, N - 1)**-1 * sum_
+    return comb(Z - 1, N - 1) ** -1 * sum_
 
 
 def fermi(i_R, i_P, start_X, end_X, start_k, end_k):
-    return 1 / (1 + e**(beta*(fitness(i_R, i_P, start_X, start_k) - fitness(i_R, i_P, end_X, end_k))))
+    return 1 / (1 + e ** (beta * (fitness(i_R, i_P, start_X, start_k) - fitness(i_R, i_P, end_X, end_k))))
 
 
 def T(i_R, i_P, X, Y, k):
@@ -135,20 +136,34 @@ def create_transition_matrix(X, Y):
     return F
 
 
+def gradient(i_R, i_P):
+    return T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) - T(i_R, i_P, COOPERATOR, DEFECTOR, RICH), \
+           T(i_R, i_P, DEFECTOR, COOPERATOR, POOR) - T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
+
+
+def distance(x, y):
+    return (x ** 2 + y ** 2) ** (1 / 2)
+
+
+def create_gradient_matrixes():
+    X = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
+    Y = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
+    strength = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
+    for i_P in range(Z_P):
+        for i_R in range(Z_R):
+            try:
+                X[i_P][i_R], Y[i_P][i_R] = gradient(i_R, i_P)
+                strength[i_P][i_R] = distance(X[i_P][i_R], Y[i_P][i_R])
+            except ValueError:
+                X[i_P][i_R] = 0
+                Y[i_P][i_R] = 0
+                strength[i_P][i_R] = 0
+    return X, Y, strength
+
+
 if __name__ == "__main__":
-    X, Y = DEFECTOR, DEFECTOR
-    F = create_transition_matrix(X, Y)
-    plt.matshow(F)
-
-    X, Y = DEFECTOR, COOPERATOR
-    F = create_transition_matrix(X, Y)
-    plt.matshow(F)
-
-    X, Y = COOPERATOR, DEFECTOR
-    F = create_transition_matrix(X, Y)
-    plt.matshow(F)
-
-    X, Y = COOPERATOR, COOPERATOR
-    F = create_transition_matrix(X, Y)
-    plt.matshow(F)
+    u, v, strength = create_gradient_matrixes()
+    u, v, strength = np.array(u), np.array(v), np.array(strength)
+    x, y = np.meshgrid(np.arange(0, Z_R), np.arange(0, Z_P))
+    plt.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
     plt.show()
