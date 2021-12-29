@@ -1,5 +1,5 @@
 from math import comb, e
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, gridspec
 import numpy as np
 
 # CONSTANTS
@@ -12,14 +12,18 @@ POOR = "P"
 # Eperiment of fig. 2.
 r = 0.2
 Z = 200
-Z_R = 40
-Z_P = 160
+#Z_R = 40
+#Z_P = 160
+Z_R = 100
+Z_P = 100
 c = 0.1
 N = 6
 b = 1
-M = 3
-b_P = 0.625
-b_R = 2.5
+M = 3*c*b
+#b_P = 0.625
+#b_R = 2.5
+b_R = 1.35
+b_P = 0.9125
 p_k_ma = [x * 10 ** -3 for x in [2, 40, 75, 3, 2, 20]]
 gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
 c_R = c * b_R
@@ -161,9 +165,36 @@ def create_gradient_matrixes():
     return X, Y, strength
 
 
+def plotGradient() :
+    """Attention à recalculer b_R et b_P
+    b_R*Z_R + b_P*Z_P = b = 1
+
+    Si Z_R = Z_P :  b_R = 2.5  -> b_P = 0.625
+                    b_R = 1.35 -> b_P = 0.9125
+                    b_R = 1.75 -> b_P = 0.8125"""
+    #Z_P = Z_R
+    frac_I_P = [0.9, 0.5, 0.1]
+    grad = [[0 for _ in range(Z_R)] for _ in range(len(frac_I_P))]
+    for frac in range(len(frac_I_P)) :
+        for i_R in range(1, Z_R) :
+            grad[frac][i_R] = gradient(i_R, int(round(Z_P*frac_I_P[frac], 0)))
+        x = np.arange(1, Z_R)
+        y = [i[0] for i in grad[frac][1:]]
+        print(x, y)
+        plt.plot(x, y)
+    plt.show()
+
 if __name__ == "__main__":
+    plotGradient()
+    """
     u, v, strength = create_gradient_matrixes()
     u, v, strength = np.array(u), np.array(v), np.array(strength)
     x, y = np.meshgrid(np.arange(0, Z_R), np.arange(0, Z_P))
-    plt.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
+    print(u, v, x, y, strength)
+    fig = plt.figure(figsize=(4, 16))
+    gs = gridspec.GridSpec(nrows=1, ncols=1)#nrows=3, ncols=2, height_ratios=[1, 1, 2])
+    ax1 = fig.add_subplot(gs[0, 0])
+    strm = ax1.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
+    fig.colorbar(strm.lines, shrink = 0.5, label= "Gradient of selection ∇")
     plt.show()
+"""
