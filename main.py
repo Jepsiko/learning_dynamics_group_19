@@ -9,28 +9,30 @@ RICH = "R"
 POOR = "P"
 
 # PARAMETERS
-# Eperiment of fig. 2.
-r = 0.2
+# Experiment of fig. 2.
+r = 0.2  # risk perception (in [0, 1])
 Z = 200
-#Z_R = 40
-#Z_P = 160
+# Z_R = 40
+# Z_P = 160
 Z_R = 100
 Z_P = 100
-c = 0.1
-N = 6
-b = 1
-M = 3*c*b
-#b_P = 0.625
-#b_R = 2.5
+c = 0.1  # fraction of endowment used to solve the group task
+N = 6  # groups size
+
+# b_P = 0.625
+# b_R = 2.5
 b_R = 1.35
 b_P = 0.9125
+b = (b_R * Z_R + b_P * Z_P) / (Z_R + Z_P)  # average of endowments
+M = 3 * c * b  # parameter in ]0, N] but not sure what it exactly represents
+
 p_k_ma = [x * 10 ** -3 for x in [2, 40, 75, 3, 2, 20]]
 gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
 c_R = c * b_R
 c_P = c * b_P
-beta = 10
-h = 0.0
-mu = 1 / Z
+beta = 10  # controls the intensity of selection
+h = 1.0  # homophily
+mu = 1 / Z  # mutation probability
 
 
 def heaviside(k):
@@ -38,16 +40,24 @@ def heaviside(k):
 
 
 def payoff(j_R, j_P, X, k):
-    if X is DEFECTOR:
-        if k is RICH:
+    """
+
+    :param j_R: number of rich cooperators
+    :param j_P: number of poor cooperators
+    :param X: cooperator/defector
+    :param k: rich/poor
+    :return: payoff for strategy (X, k)
+    """
+    if X == DEFECTOR:
+        if k == RICH:
             b_strat = b_R
         else:
             b_strat = b_P
-
         theta = heaviside(c_R * j_R + c_P * j_P - M * c * b)
         return b_strat * (theta + (1 - r) * (1 - theta))
+
     else:
-        if k is RICH:
+        if k == RICH:
             c_strat = c_R
         else:
             c_strat = c_P
@@ -55,13 +65,13 @@ def payoff(j_R, j_P, X, k):
 
 
 def fitness(i_R, i_P, X, k):
-    if X is COOPERATOR:
-        if k is RICH:
+    if X == COOPERATOR:
+        if k == RICH:
             a, b, x, m, n = -1, 0, 0, 1, 0
         else:
             a, b, x, m, n = 0, -1, 0, 0, 1
     else:
-        if k is RICH:
+        if k == RICH:
             a, b, x, m, n = 0, 0, -1, 0, 0
         else:
             a, b, x, m, n = 0, 0, -1, 0, 0
@@ -81,7 +91,7 @@ def fermi(i_R, i_P, start_X, end_X, start_k, end_k):
 
 
 def T(i_R, i_P, X, Y, k):
-    if k is RICH:
+    if k == RICH:
         Z_k = Z_R
         Z_l = Z_P
         l = POOR
@@ -90,26 +100,26 @@ def T(i_R, i_P, X, Y, k):
         Z_l = Z_R
         l = RICH
 
-    if X is COOPERATOR:
-        if k is RICH:
+    if X == COOPERATOR:
+        if k == RICH:
             i_X_k = i_R
         else:
             i_X_k = i_P
     else:
-        if k is RICH:
+        if k == RICH:
             i_X_k = Z_R - i_R
         else:
             i_X_k = Z_P - i_P
 
-    if Y is COOPERATOR:
-        if k is RICH:
+    if Y == COOPERATOR:
+        if k == RICH:
             i_Y_k = i_R
             i_Y_l = i_P
         else:
             i_Y_k = i_P
             i_Y_l = i_R
     else:
-        if k is RICH:
+        if k == RICH:
             i_Y_k = Z_R - i_R
             i_Y_l = Z_P - i_P
         else:
@@ -149,7 +159,7 @@ def distance(x, y):
     return (x ** 2 + y ** 2) ** (1 / 2)
 
 
-def create_gradient_matrixes():
+def create_gradient_matrices():
     X = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
     Y = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
     strength = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
@@ -165,36 +175,34 @@ def create_gradient_matrixes():
     return X, Y, strength
 
 
-def plotGradient() :
+def plotGradient():
     """Attention à recalculer b_R et b_P
     b_R*Z_R + b_P*Z_P = b = 1
 
     Si Z_R = Z_P :  b_R = 2.5  -> b_P = 0.625
                     b_R = 1.35 -> b_P = 0.9125
                     b_R = 1.75 -> b_P = 0.8125"""
-    #Z_P = Z_R
+    # Z_P = Z_R
     frac_I_P = [0.9, 0.5, 0.1]
     grad = [[0 for _ in range(Z_R)] for _ in range(len(frac_I_P))]
-    for frac in range(len(frac_I_P)) :
-        for i_R in range(1, Z_R) :
-            grad[frac][i_R] = gradient(i_R, int(round(Z_P*frac_I_P[frac], 0)))
+    for frac in range(len(frac_I_P)):
+        for i_R in range(1, Z_R):
+            grad[frac][i_R] = gradient(i_R, int(round(Z_P * frac_I_P[frac], 0)))
         x = np.arange(1, Z_R)
         y = [i[0] for i in grad[frac][1:]]
         print(x, y)
         plt.plot(x, y)
     plt.show()
 
+
 if __name__ == "__main__":
-    plotGradient()
-    """
-    u, v, strength = create_gradient_matrixes()
+    u, v, strength = create_gradient_matrices()
     u, v, strength = np.array(u), np.array(v), np.array(strength)
     x, y = np.meshgrid(np.arange(0, Z_R), np.arange(0, Z_P))
     print(u, v, x, y, strength)
     fig = plt.figure(figsize=(4, 16))
-    gs = gridspec.GridSpec(nrows=1, ncols=1)#nrows=3, ncols=2, height_ratios=[1, 1, 2])
+    gs = gridspec.GridSpec(nrows=1, ncols=1)  # nrows=3, ncols=2, height_ratios=[1, 1, 2])
     ax1 = fig.add_subplot(gs[0, 0])
     strm = ax1.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
-    fig.colorbar(strm.lines, shrink = 0.5, label= "Gradient of selection ∇")
+    fig.colorbar(strm.lines, shrink=0.5, label="Gradient of selection ∇")
     plt.show()
-"""
