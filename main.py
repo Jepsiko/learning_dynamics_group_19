@@ -10,28 +10,31 @@ POOR = "P"
 
 # PARAMETERS
 # Experiment of fig. 2.
-r = 0.2  # risk perception (in [0, 1])
-Z = 200
+r = 0.3  # risk perception (in [0, 1])
 # Z_R = 40
 # Z_P = 160
-Z_R = 100
+Z_R = 25
 Z_P = 100
+Z = Z_R + Z_P
 c = 0.1  # fraction of endowment used to solve the group task
-N = 6  # groups size
+N = 10  # groups size
 
 # b_P = 0.625
 # b_R = 2.5
-b_R = 1.35
-b_P = 0.9125
+b_R = 1.75
+#b_P = 0.9125
+b_P = 1/Z_P * (Z - b_R*Z_R)
 b = (b_R * Z_R + b_P * Z_P) / (Z_R + Z_P)  # average of endowments
-M = 3 * c * b  # parameter in ]0, N] but not sure what it exactly represents
+print(b_R, b_P, b)
+
+M = 3 #* c * b  # parameter in ]0, N] but not sure what it exactly represents
 
 p_k_ma = [x * 10 ** -3 for x in [2, 40, 75, 3, 2, 20]]
 gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
 c_R = c * b_R
 c_P = c * b_P
 beta = 10  # controls the intensity of selection
-h = 1.0  # homophily
+h = 0  # homophily
 mu = 1 / Z  # mutation probability
 
 
@@ -126,8 +129,8 @@ def T(i_R, i_P, X, Y, k):
             i_Y_k = Z_P - i_P
             i_Y_l = Z_R - i_R
 
-    left_term = i_Y_k / ((Z_k - 1 + (1 - h) * Z_l) * (1 + fermi(i_R, i_P, X, Y, k, k)))
-    right_term = (1 - h) * i_Y_l / ((Z_k - 1 + (1 - h) * Z_l) * (1 + fermi(i_R, i_P, X, Y, k, l)))
+    left_term = i_Y_k / (Z_k - 1 + (1 - h) * Z_l) * (1 + fermi(i_R, i_P, X, Y, k, k))
+    right_term = (1 - h) * i_Y_l / (Z_k - 1 + (1 - h) * Z_l) * (1 + fermi(i_R, i_P, X, Y, k, l))
     return i_X_k / Z * ((1 - mu) * (left_term + right_term) + mu)
 
 
@@ -175,27 +178,47 @@ def create_gradient_matrices():
     return X, Y, strength
 
 
-def plotGradient():
+def plotGradient(X):
     """Attention à recalculer b_R et b_P
     b_R*Z_R + b_P*Z_P = b = 1
 
     Si Z_R = Z_P :  b_R = 2.5  -> b_P = 0.625
                     b_R = 1.35 -> b_P = 0.9125
                     b_R = 1.75 -> b_P = 0.8125"""
-    # Z_P = Z_R
-    frac_I_P = [0.9, 0.5, 0.1]
-    grad = [[0 for _ in range(Z_R)] for _ in range(len(frac_I_P))]
-    for frac in range(len(frac_I_P)):
-        for i_R in range(1, Z_R):
-            grad[frac][i_R] = gradient(i_R, int(round(Z_P * frac_I_P[frac], 0)))
-        x = np.arange(1, Z_R)
-        y = [i[0] for i in grad[frac][1:]]
-        print(x, y)
-        plt.plot(x, y)
-    plt.show()
+
+    if X == RICH :
+        frac_I_P = [0.9, 0.5, 0.1]
+        grad = [[0 for _ in range(Z_P)] for _ in range(len(frac_I_P))]
+        for frac in range(len(frac_I_P)):
+            i_P = int(round(Z_P * frac_I_P[frac], 0))
+            for i_R in range(1, Z_R):
+                grad[frac][i_R] = gradient(i_R, i_P)
+            print(grad[frac])
+            x = np.arange(0+1/Z_R, 1, 1/Z_R)
+            y = [i[0] for i in grad[frac][1:Z_R]]
+            #z = [i[1] for i in grad[frac][1:]]
+            #print(x, y)
+            plt.plot(x, y)
+            #plt.plot(x, z)
+        plt.show()
+
+    if X == POOR :
+        frac_I_R = [0.9, 0.5, 0.1]
+        grad = [[0 for _ in range(Z_P)] for _ in range(len(frac_I_R))]
+        for frac in range(len(frac_I_R)):
+            i_R = int(round(Z_R * frac_I_R[frac], 0))
+            for i_P in range(1, Z_P):
+                grad[frac][i_P] = gradient(i_R, i_P)
+            x = np.arange(0+1/Z_P, 1, 1/Z_P)
+            y = [i[1] for i in grad[frac][1:Z_P]]
+            print(x, y)
+            plt.plot(x, y)
+        plt.show()
 
 
 if __name__ == "__main__":
+    plotGradient(RICH)
+    """
     u, v, strength = create_gradient_matrices()
     u, v, strength = np.array(u), np.array(v), np.array(strength)
     x, y = np.meshgrid(np.arange(0, Z_R), np.arange(0, Z_P))
@@ -206,3 +229,4 @@ if __name__ == "__main__":
     strm = ax1.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
     fig.colorbar(strm.lines, shrink=0.5, label="Gradient of selection ∇")
     plt.show()
+    """
