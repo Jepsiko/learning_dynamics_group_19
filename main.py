@@ -2,230 +2,288 @@ from math import comb, e
 from matplotlib import pyplot as plt, gridspec
 import numpy as np
 
-# CONSTANTS
-COOPERATOR = "C"
-DEFECTOR = "D"
-RICH = "R"
-POOR = "P"
 
-# PARAMETERS
-# Experiment of fig. 2.
-r = 0.3  # risk perception (in [0, 1])
-# Z_R = 40
-# Z_P = 160
-Z_R = 100
-Z_P = 100
-Z = Z_R + Z_P
-c = 0.1  # fraction of endowment used to solve the group task
-N = 6  # groups size
+class FuckingProjectThatMakesMeMad:
 
-STRAT = RICH
-# b_P = 0.625
-# b_R = 2.5
-b_R = 1.7
-#b_P = 0.9125
-b_P = 1/Z_P * (Z - b_R*Z_R)
-b = (b_R * Z_R + b_P * Z_P) / (Z_R + Z_P)  # average of endowments
+    def __init__(self) :
+        # CONSTANTS
+        self.COOPERATOR = "C"
+        self.DEFECTOR = "D"
+        self.RICH = "R"
+        self.POOR = "P"
 
-M = 3 #* c * b  # parameter in ]0, N] but not sure what it exactly represents
+        # PARAMETERS
+        self.r = 0.3  # risk perception (in [0, 1])
+        self.Z_R = 100
+        self.Z_P = 100
+        self.Z = self.Z_R + self.Z_P
+        self.c = 0.1  # fraction of endowment used to solve the group task
+        self.N = 6  # groups size
 
-p_k_ma = [x * 10 ** -3 for x in [2, 40, 75, 3, 2, 20]]
-gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
-c_R = c * b_R
-c_P = c * b_P
-beta = 5  # controls the intensity of selection
-h = 0  # homophily
-mu = 1 / Z  # mutation probability
+        self.b_R = 1.35
+        self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
+        self.b = (self.b_R * self.Z_R + self.b_P * self.Z_P) / (self.Z_R + self.Z_P)  # average of endowments
 
+        self.M = 3  # * c * b  # parameter in ]0, N] but not sure what it exactly represents
 
-def heaviside(k):
-    return int(k >= 0)
+        self.p_k_ma = [x * 10 ** -3 for x in [2, 40, 75, 3, 2, 20]]
+        self.gradient_k_ma = [x * 10 ** -2 for x in [16, 6, 2, 16, 6, 3]]
+        self.c_R = self.c * self.b_R
+        self.c_P = self.c * self.b_P
+        self.beta = 5  # controls the intensity of selection
+        self.h = 1  # homophily
+        self.mu = 1 / self.Z  # mutation probability
 
+    def heaviside(self, k):
+        return int(k >= 0)
 
-def payoff(j_R, j_P, X, k):
-    """
+    def payoff(self, j_R, j_P, X, k):
+        """
+        :param j_R: number of rich cooperators
+        :param j_P: number of poor cooperators
+        :param X: cooperator/defector
+        :param k: rich/poor
+        :return: payoff for strategy (X, k)
+        """
+        if X == self.DEFECTOR:
+            if k == self.RICH:
+                b_strat = self.b_R
+            else:
+                b_strat = self.b_P
+            theta = self.heaviside(self.c_R * j_R + self.c_P * j_P - self.M * self.c * self.b)
+            return b_strat * (theta + (1 - self.r) * (1 - theta))
 
-    :param j_R: number of rich cooperators
-    :param j_P: number of poor cooperators
-    :param X: cooperator/defector
-    :param k: rich/poor
-    :return: payoff for strategy (X, k)
-    """
-    if X == DEFECTOR:
-        if k == RICH:
-            b_strat = b_R
         else:
-            b_strat = b_P
-        theta = heaviside(c_R * j_R + c_P * j_P - M * c * b)
-        return b_strat * (theta + (1 - r) * (1 - theta))
+            if k == self.RICH:
+                c_strat = self.c_R
+            else:
+                c_strat = self.c_P
+            return self.payoff(j_R, j_P, self.DEFECTOR, k) - c_strat
 
-    else:
-        if k == RICH:
-            c_strat = c_R
+    def fitness(self, i_R, i_P, X, k):
+        if X == self.COOPERATOR:
+            if k == self.RICH:
+                a, b, x, m, n = -1, 0, 0, 1, 0
+            else:
+                a, b, x, m, n = 0, -1, 0, 0, 1
         else:
-            c_strat = c_P
-        return payoff(j_R, j_P, DEFECTOR, k) - c_strat
+            if k == self.RICH:
+                a, b, x, m, n = 0, 0, -1, 0, 0
+            else:
+                a, b, x, m, n = 0, 0, -1, 0, 0
 
+        sum_ = 0
+        for j_R in range(self.N):
+            for j_P in range(self.N - j_R):
+                mul = comb(i_R + a, j_R) * comb(i_P + b, j_P)
+                mul *= comb(self.Z + x - i_R - i_P, self.N - 1 - j_R - j_P)
+                mul *= self.payoff(j_R + m, j_P + n, X, k)
+                sum_ += mul
+        return comb(self.Z - 1, self.N - 1) ** -1 * sum_
 
-def fitness(i_R, i_P, X, k):
-    if X == COOPERATOR:
-        if k == RICH:
-            a, b, x, m, n = -1, 0, 0, 1, 0
+    def fermi(self, i_R, i_P, start_X, end_X, start_k, end_k):
+        return (1 + e ** (self.beta * (self.fitness(i_R, i_P, start_X, start_k) - self.fitness(i_R, i_P, end_X, end_k)))) ** -1
+
+    def T(self, i_R, i_P, X, Y, k):
+        if k == self.RICH:
+            Z_k = self.Z_R
+            Z_l = self.Z_P
+            l = self.POOR
         else:
-            a, b, x, m, n = 0, -1, 0, 0, 1
-    else:
-        if k == RICH:
-            a, b, x, m, n = 0, 0, -1, 0, 0
+            Z_k = self.Z_P
+            Z_l = self.Z_R
+            l = self.RICH
+
+        if X == self.COOPERATOR:
+            if k == self.RICH:
+                i_X_k = i_R
+            else:
+                i_X_k = i_P
         else:
-            a, b, x, m, n = 0, 0, -1, 0, 0
+            if k == self.RICH:
+                i_X_k = self.Z_R - i_R
+            else:
+                i_X_k = self.Z_P - i_P
 
-    sum_ = 0
-    for j_R in range(N):
-        for j_P in range(N - j_R):
-            mul = comb(i_R + a, j_R) * comb(i_P + b, j_P)
-            mul *= comb(Z + x - i_R - i_P, N - 1 - j_R - j_P)
-            mul *= payoff(j_R + m, j_P + n, X, k)
-            sum_ += mul
-    return comb(Z - 1, N - 1) ** -1 * sum_
-
-
-def fermi(i_R, i_P, start_X, end_X, start_k, end_k):
-    return (1 + e ** (beta * (fitness(i_R, i_P, start_X, start_k) - fitness(i_R, i_P, end_X, end_k)))) ** -1
-
-
-def T(i_R, i_P, X, Y, k):
-    if k == RICH:
-        Z_k = Z_R
-        Z_l = Z_P
-        l = POOR
-    else:
-        Z_k = Z_P
-        Z_l = Z_R
-        l = RICH
-
-    if X == COOPERATOR:
-        if k == RICH:
-            i_X_k = i_R
+        if Y == self.COOPERATOR:
+            if k == self.RICH:
+                i_Y_k = i_R
+                i_Y_l = i_P
+            else:
+                i_Y_k = i_P
+                i_Y_l = i_R
         else:
-            i_X_k = i_P
-    else:
-        if k == RICH:
-            i_X_k = Z_R - i_R
-        else:
-            i_X_k = Z_P - i_P
+            if k == self.RICH:
+                i_Y_k = self.Z_R - i_R
+                i_Y_l = self.Z_P - i_P
+            else:
+                i_Y_k = self.Z_P - i_P
+                i_Y_l = self.Z_R - i_R
 
-    if Y == COOPERATOR:
-        if k == RICH:
-            i_Y_k = i_R
-            i_Y_l = i_P
-        else:
-            i_Y_k = i_P
-            i_Y_l = i_R
-    else:
-        if k == RICH:
-            i_Y_k = Z_R - i_R
-            i_Y_l = Z_P - i_P
-        else:
-            i_Y_k = Z_P - i_P
-            i_Y_l = Z_R - i_R
+        left_term = i_Y_k / (Z_k - 1 + (1 - self.h) * Z_l) * self.fermi(i_R, i_P, X, Y, k, k)
+        right_term = (1 - self.h) * i_Y_l / (Z_k - 1 + (1 - self.h) * Z_l) * self.fermi(i_R, i_P, X, Y, k, l)
+        return (i_X_k / self.Z) * ((1 - self.mu) * (left_term + right_term) + self.mu)
 
-    left_term = i_Y_k / (Z_k - 1 + (1 - h) * Z_l) * fermi(i_R, i_P, X, Y, k, k)
-    right_term = (1 - h) * i_Y_l / (Z_k - 1 + (1 - h) * Z_l) * fermi(i_R, i_P, X, Y, k, l)
-    return (i_X_k / Z) * ((1 - mu) * (left_term + right_term) + mu)
+    def V(self, i_R, i_P):
+        return i_R * self.Z_P + i_P
 
+    def V_minus_1(self, x):
+        return x // self.Z_P, x % self.Z_P
 
-def V(i_R, i_P):
-    return i_R * Z_P + i_P
+    def create_transition_matrix(self, X, Y):
+        F = [[0 for _ in range(self.Z_R)] for _ in range(self.Z_P)]
+        for i_P in range(self.Z_P):
+            for i_R in range(self.Z_R):
+                try:
+                    F[i_P][i_R] = self.T(i_R, i_P, X, Y, self.POOR)
+                except ValueError:
+                    F[i_P][i_R] = 0
+        return F
 
+    def gradient(self, i_R, i_P):
+        return self.T(i_R, i_P, self.DEFECTOR, self.COOPERATOR, self.RICH) - self.T(i_R, i_P, self.COOPERATOR, self.DEFECTOR, self.RICH), \
+               self.T(i_R, i_P, self.DEFECTOR, self.COOPERATOR, self.POOR) - self.T(i_R, i_P, self.COOPERATOR, self.DEFECTOR, self.POOR)
 
-def V_minus_1(x):
-    return x // Z_P, x % Z_P
+    def distance(self, x, y):
+        return (x ** 2 + y ** 2) ** (1 / 2)
 
-
-def create_transition_matrix(X, Y):
-    F = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
-    for i_P in range(Z_P):
-        for i_R in range(Z_R):
-            try:
-                F[i_P][i_R] = T(i_R, i_P, X, Y, POOR)
-            except ValueError:
-                F[i_P][i_R] = 0
-    return F
-
-
-def gradient(i_R, i_P):
-    return T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) - T(i_R, i_P, COOPERATOR, DEFECTOR, RICH), \
-           T(i_R, i_P, DEFECTOR, COOPERATOR, POOR) - T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
-
-
-def distance(x, y):
-    return (x ** 2 + y ** 2) ** (1 / 2)
+    def create_gradient_matrices(self):
+        X = [[0 for _ in range(self.Z_R)] for _ in range(self.Z_P)]
+        Y = [[0 for _ in range(self.Z_R)] for _ in range(self.Z_P)]
+        strength = [[0 for _ in range(self.Z_R)] for _ in range(self.Z_P)]
+        for i_P in range(self.Z_P):
+            for i_R in range(self.Z_R):
+                try:
+                    X[i_P][i_R], Y[i_P][i_R] = self.gradient(i_R, i_P)
+                    strength[i_P][i_R] = self.distance(X[i_P][i_R], Y[i_P][i_R])
+                except ValueError:
+                    X[i_P][i_R] = 0
+                    Y[i_P][i_R] = 0
+                    strength[i_P][i_R] = 0
+        return X, Y, strength
 
 
-def create_gradient_matrices():
-    X = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
-    Y = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
-    strength = [[0 for _ in range(Z_R)] for _ in range(Z_P)]
-    for i_P in range(Z_P):
-        for i_R in range(Z_R):
-            try:
-                X[i_P][i_R], Y[i_P][i_R] = gradient(i_R, i_P)
-                strength[i_P][i_R] = distance(X[i_P][i_R], Y[i_P][i_R])
-            except ValueError:
-                X[i_P][i_R] = 0
-                Y[i_P][i_R] = 0
-                strength[i_P][i_R] = 0
-    return X, Y, strength
+    def plotGradients(self):
+        #set parameters of Figure 1 (SI) :
+        self.N = 10
+        self.M = 3
+        self.beta = 10
+        self.h = 0
+        self.r = 0.3
+        self.c = 0.1
+        self.c_R = self.c * self.b_R
+        self.c_P = self.c * self.b_P
 
+        fig, axs = plt.subplots(2, 2)
+        ZR= self.Z_R
+        ZP= self.Z_P
 
-def plotGradient(X):
-    """Attention à recalculer b_R et b_P
-    b_R*Z_R + b_P*Z_P = b = 1
+        self.plotGrad(axs[0, 0], self.RICH, 100, 100)
+        self.plotGrad(axs[1, 0], self.POOR, 100, 100)
+        self.plotGrad(axs[0, 1], self.RICH, 40, 160)
+        self.plotGrad(axs[1, 1], self.POOR, 40, 160)
 
-    Si Z_R = Z_P :  b_R = 2.5  -> b_P = 0.625
-                    b_R = 1.35 -> b_P = 0.9125
-                    b_R = 1.75 -> b_P = 0.8125"""
+        axs[0,0].set_title("ZP = ZR")
+        axs[0,1].set_title("ZP = 4ZR")
+        axs[0,0].set(ylabel="∇ (Rich)")
+        axs[1,0].set(ylabel="∇ (Poor)")
+        axs[0,1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+        axs[1,1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
-    if X == RICH :
-        frac_I_P = [0.9, 0.5, 0.1]
-        grad = [[0 for _ in range(Z_R)] for _ in range(len(frac_I_P))]
-        for frac in range(len(frac_I_P)):
-            i_P = int(round(Z_P * frac_I_P[frac], 0))
-            for i_R in range(1, Z_R):
-                grad[frac][i_R] = gradient(i_R, i_P)
-            print(grad[frac])
-            x = np.arange(0+1/Z_R, 1, 1/Z_R)
-            y = [i[0] for i in grad[frac][1:Z_R]]
-            #z = [i[1] for i in grad[frac][1:]]
-            #print(x, y)
-            plt.plot(x, y)
-            #plt.plot(x, z)
+        #for ax in axs.flat:
+        #    ax.label_outer()
+
         plt.show()
+        self.Z_R=ZR
+        self.Z_P=ZP
 
-    if X == POOR :
-        frac_I_R = [0.9, 0.5, 0.1]
-        grad = [[0 for _ in range(Z_P)] for _ in range(len(frac_I_R))]
-        for frac in range(len(frac_I_R)):
-            i_R = int(round(Z_R * frac_I_R[frac], 0))
-            for i_P in range(1, Z_P):
-                grad[frac][i_P] = gradient(i_R, i_P)
-            x = np.arange(0+1/Z_P, 1, 1/Z_P)
-            y = [i[1] for i in grad[frac][1:Z_P]]
-            print(x, y)
-            plt.plot(x, y)
+
+    def plotGrad(self, ax, X, ZR, ZP):
+        self.Z_R = ZR
+        self.Z_P = ZP
+        bs = [1.35, 1.75]
+        line = ["--", ""]
+        fraction = [0.9, 0.5, 0.1]
+        colors = ["green", "orange", "blue"]
+        for b in range(len(bs)) :
+            self.b_R = bs[b]
+            self.b_P = self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
+            self.b = (self.b_R * self.Z_R + self.b_P * self.Z_P) / (self.Z_R + self.Z_P)
+            if X == self.RICH:
+
+                grad = [[0 for _ in range(self.Z_R)] for _ in range(len(fraction))]
+                for frac in range(len(fraction)):
+                    i_P = int(round(self.Z_P * fraction[frac], 0))
+                    for i_R in range(1, self.Z_R):
+                        grad[frac][i_R] = self.gradient(i_R, i_P)
+                    x = np.arange(0 + 1 / self.Z_R, 1, 1 / self.Z_R)
+                    y = [i[0] for i in grad[frac][1:self.Z_R]]
+                    ax.plot(x, y, line[b], color=colors[frac], label=str(round(fraction[frac]*100,0))+" % * Z_R ; b_R = " + str(bs[b]))
+                    ax.set(xlabel = "i_R/Z_R")
+
+            if X == self.POOR:
+                x = np.arange(0 + 1 / self.Z_P, 1, 1 / self.Z_P)
+                grad = [[0 for _ in range(self.Z_P)] for _ in range(len(fraction))]
+                for frac in range(len(fraction)):
+                    i_R = int(round(self.Z_R * fraction[frac], 0))
+                    for i_P in range(1, self.Z_P):
+                        grad[frac][i_P] = self.gradient(i_R, i_P)
+                    y = [i[1] for i in grad[frac][1:self.Z_P]]
+                    ax.plot(x, y, line[b], color=colors[frac], label=str(round(fraction[frac]*100,0))+" % * Z_R ; b_R = " + str(bs[b]))
+                    ax.set(xlabel = "i_P/Z_P")
+
+
+    def plotOneGraphFig2(self, ax, fig):
+        u, v, strength = self.create_gradient_matrices()
+        u, v, strength = np.array(u), np.array(v), np.array(strength)
+        x, y = np.meshgrid(np.arange(0, self.Z_R), np.arange(0, self.Z_P))
+
+        strm = ax.streamplot(x, y, u, v ,color=strength, linewidth=1, cmap='jet')
+        ax.set( xlabel="i_R", ylabel="i_P")
+        ax.set_title("h="+str(self.h))
+        return strm
+
+    def plotFig2SI(self) :
+        #set parameters of figure 2 (SI) :
+        self.Z_R = 100
+        self.Z_P = 100
+        self.Z = self.Z_R + self.Z_P
+        self.c = 0.1
+        self.N = 6
+        self.b_R = 1.7
+        self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
+        self.b = (self.b_R * self.Z_R + self.b_P * self.Z_P) / (self.Z_R + self.Z_P)
+        self.M = 3
+        self.p_k_ma = [x * 10 ** -2 for x in [4.2, 5.3, 3.4, 0.2, 0.7, 1.6]]
+        self.gradient_k_ma = [x * 10 ** -2 for x in [25, 12, 2, 25, 12, 2]]
+        self.c_R = self.c * self.b_R
+        self.c_P = self.c * self.b_P
+        self.beta = 5
+        self.mu = 1 / self.Z
+
+
+        fig, axs = plt.subplots(2, 3)
+        pad = 5 #used for plot label
+        homophilies = [0, 0.7, 1]
+        risks = [0.2, 0.3]
+        for r in range(len(risks)) :
+            self.r = risks[r]
+            for h in range(len(homophilies)) :
+                self.h = homophilies[h]
+                strm = self.plotOneGraphFig2(axs[r, h], fig)
+        #fig.colorbar(strm.lines, shrink=0.5, label="Gradient of selection ∇") #need to find how to fix the position
+        axs[0,0].annotate("r = 0.2", xy=(0, 0.5), xytext=(-axs[0,0].yaxis.labelpad - pad, 0),
+                xycoords=axs[0,0].yaxis.label, textcoords='offset points',
+                size='large', ha='right', va='center')
+        #axs[1, 0].annotate("r = 0.3", xy=(0, 0.5), xytext=(-axs[0, 0].yaxis.labelpad - pad, 0),
+        #                   xycoords=axs[0, 0].yaxis.label, textcoords='offset points',
+        #                   size='large', ha='right', va='center')
+        fig.tight_layout() #avoid the superpose the different plots
         plt.show()
-
 
 if __name__ == "__main__":
-    #plotGradient(STRAT)
+    obj = FuckingProjectThatMakesMeMad()
+    #obj.plotGradients()
+    obj.plotFig2SI()
 
-    u, v, strength = create_gradient_matrices()
-    u, v, strength = np.array(u), np.array(v), np.array(strength)
-    x, y = np.meshgrid(np.arange(0, Z_R), np.arange(0, Z_P))
-    print(u, v, x, y, strength)
-    fig = plt.figure(figsize=(4, 16))
-    gs = gridspec.GridSpec(nrows=1, ncols=1)  # nrows=3, ncols=2, height_ratios=[1, 1, 2])
-    ax1 = fig.add_subplot(gs[0, 0])
-    strm = ax1.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
-    fig.colorbar(strm.lines, shrink=0.5, label="Gradient of selection ∇")
-    plt.show()
+
