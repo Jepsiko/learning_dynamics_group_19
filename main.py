@@ -234,7 +234,7 @@ class Project:
         u, v, strength = np.array(u), np.array(v), np.array(strength)
         x, y = np.meshgrid(np.arange(0, self.Z_R), np.arange(0, self.Z_P))
 
-        strm = ax.streamplot(x, y, u, v, color=strength, linewidth=1, cmap='jet')
+        strm = ax.streamplot(x, y, u, v, color=strength, linewidth=0.5, arrowsize=0.5, density=1, cmap='jet')
         ax.set(xlabel="i_R", ylabel="i_P")
         ax.set_title("h=" + str(self.h))
         return strm
@@ -276,8 +276,45 @@ class Project:
         fig.tight_layout()  # avoid the superpose the different plots
         plt.show()
 
+    def plotFig2Paper(self):
+        # set parameters of figure 2 (Paper) :
+        self.Z_R = 40
+        self.Z_P = 160
+        self.Z = self.Z_R + self.Z_P
+        self.c = 0.1
+        self.N = 6
+        self.b_R = 2.5
+        self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
+        self.b = (self.b_R * self.Z_R + self.b_P * self.Z_P) / (self.Z_R + self.Z_P)
+        self.M = 3
+        self.p_k_ma = [x * 10 ** -2 for x in [2, 40, 75, 3, 2, 20]]
+        self.gradient_k_ma = [x * 10 ** -2 for x in [25, 12, 2, 25, 12, 2]]
+        self.c_R = self.c * self.b_R
+        self.c_P = self.c * self.b_P
+        self.beta = 5
+        self.mu = 1 / self.Z
+
+        fig, axs = plt.subplots(2, 3)
+        pad = 5  # used for plot label
+        homophilies = [0, 0.7, 1]
+        risks = [0.2, 0.3]
+        for r in range(len(risks)):
+            self.r = risks[r]
+            for h in range(len(homophilies)):
+                self.h = homophilies[h]
+                strm = self.plotOneGraphFig2(axs[r, h], fig)
+        # fig.colorbar(strm.lines, shrink=0.5, label="Gradient of selection ∇") #need to find how to fix the position
+        axs[0, 0].annotate("r = 0.2", xy=(0, 0.5), xytext=(-axs[0, 0].yaxis.labelpad - pad, 0),
+                           xycoords=axs[0, 0].yaxis.label, textcoords='offset points',
+                           size='large', ha='right', va='center')
+        axs[1, 0].annotate("r = 0.3", xy=(0, 0.5), xytext=(-axs[1, 0].yaxis.labelpad - pad, 0),
+                           xycoords=axs[1, 0].yaxis.label, textcoords='offset points',
+                           size='large', ha='right', va='center')
+        fig.tight_layout()  # avoid the superpose the different plots
+        plt.show()
+
 
 if __name__ == "__main__":
     obj = Project()
     # obj.plotGradients()
-    obj.plotFig2SI()
+    obj.plotFig2Paper()
