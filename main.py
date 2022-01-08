@@ -15,11 +15,11 @@ class Project:
 
         # PARAMETERS
         self.r = 0.3  # risk perception (in [0, 1])
-        self.Z_R = 10
-        self.Z_P = 10
+        self.Z_R = 100
+        self.Z_P = 100
         self.Z = self.Z_R + self.Z_P
         self.c = 0.1  # fraction of endowment used to solve the group task
-        self.N = 6  # groups size
+        self.N = 10  # groups size
 
         self.b_R = 1.35
         self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
