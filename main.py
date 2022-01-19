@@ -132,68 +132,6 @@ class Project:
         right_term = (1 - self.h) * i_Y_l / (Z_k - 1 + (1 - self.h) * Z_l) * self.fermi(i_R, i_P, X, Y, k, l)
         return (i_X_k / self.Z) * ((1 - self.mu) * (left_term + right_term) + self.mu)
 
-    # def T_transition(self, i_R, i_P, i_R_prime, i_P_prime):
-    #
-    #     if i_R == i_R_prime and i_P == i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, COOPERATOR, RICH) * self.T(i_R, i_P, COOPERATOR, COOPERATOR, POOR)
-    #     elif i_R == i_R_prime and i_P < i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, COOPERATOR, RICH) * self.T(i_R, i_P, DEFECTOR, COOPERATOR, POOR)
-    #     elif i_R == i_R_prime and i_P > i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, COOPERATOR, RICH) * self.T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
-    #
-    #     elif i_R < i_R_prime and i_P == i_P_prime:
-    #         return self.T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) * self.T(i_R, i_P, COOPERATOR, COOPERATOR, POOR)
-    #     elif i_R < i_R_prime and i_P < i_P_prime:
-    #         return self.T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) * self.T(i_R, i_P, DEFECTOR, COOPERATOR, POOR)
-    #     elif i_R < i_R_prime and i_P > i_P_prime:
-    #         return self.T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) * self.T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
-    #
-    #     elif i_R > i_R_prime and i_P == i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, DEFECTOR, RICH) * self.T(i_R, i_P, COOPERATOR, COOPERATOR, POOR)
-    #     elif i_R > i_R_prime and i_P < i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, DEFECTOR, RICH) * self.T(i_R, i_P, DEFECTOR, COOPERATOR, POOR)
-    #     elif i_R > i_R_prime and i_P > i_P_prime:
-    #         return self.T(i_R, i_P, COOPERATOR, DEFECTOR, RICH) * self.T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
-    #
-    #     else:
-    #         print("ERROR")
-    #
-    # def create_matrix_W(self):
-    #     size = self.Z_R * self.Z_P
-    #     W = [[0 for _ in range(size)] for _ in range(size)]
-    #     for i_R in range(self.Z_R):
-    #         for i_P in range(self.Z_P):
-    #             print("i_R: {0}, i_P: {1}".format(i_R, i_P))
-    #             p = self.V(i_R, i_P)
-    #             for i_R_prime in range(self.Z_R):
-    #                 for i_P_prime in range(self.Z_P):
-    #                     q = self.V(i_R_prime, i_P_prime)
-    #                     W[p][q] = self.T_transition(i_R, i_P, i_R_prime, i_P_prime)
-    #                     # print("i_R: {0}, i_P: {1}, i_R_prime: {2}, i_P_prime: {3}, W[p][q]: {4}".format(i_R, i_P, i_R_prime, i_P_prime, W[p][q]))
-    #     plt.matshow(np.array(W))
-    #     plt.show()
-    #     return W
-    #
-    # def get_probabilities(self, W):
-    #     eigenvalues, eigenvectors = np.linalg.eig(W)
-    #     print(np.linalg.eig(W))
-    #     for i in range(len(eigenvalues)):
-    #         if eigenvalues[i] == 1.0:
-    #             proba = [[0 for _ in range(self.Z_R)] for _ in range(self.Z_P)]
-    #             for j in range(len(eigenvectors[i])):
-    #                 i_R, i_P = self.V_minus_1(j)
-    #                 proba[i_R][i_P] = float(eigenvectors[i][j])
-    #             plt.matshow(np.array(proba))
-    #             plt.show()
-    #             return proba
-    #     print("Eigenvalue 1 not found")
-    #
-    # def V(self, i_R, i_P):
-    #     return i_R * self.Z_P + i_P
-    #
-    # def V_minus_1(self, x):
-    #     return x // self.Z_P, x % self.Z_P
-
     def gradient(self, i_R, i_P):
         return self.T(i_R, i_P, DEFECTOR, COOPERATOR, RICH) - self.T(i_R, i_P, COOPERATOR, DEFECTOR, RICH), \
                self.T(i_R, i_P, DEFECTOR, COOPERATOR, POOR) - self.T(i_R, i_P, COOPERATOR, DEFECTOR, POOR)
@@ -226,6 +164,7 @@ class Project:
         fig, axs = plt.subplots(2, 2, figsize=(10, 5))
         ZR = self.Z_R
         ZP = self.Z_P
+        self.Z = 200
 
         self.plotGrad(axs[0, 0], RICH, 100, 100)
         self.plotGrad(axs[1, 0], POOR, 100, 100)
@@ -258,31 +197,35 @@ class Project:
             self.b_R = bs[b]
             self.b_P = self.b_P = 1 / self.Z_P * (self.Z - self.b_R * self.Z_R)
             self.b = (self.b_R * self.Z_R + self.b_P * self.Z_P) / (self.Z_R + self.Z_P)
+            self.c_R = self.c * self.b_R
+            self.c_P = self.c * self.b_P
             if X == RICH:
-
-                grad = [[0 for _ in range(self.Z_R)] for _ in range(len(fraction))]
+                x = np.linspace(0, 1, self.Z_R+1)
+                grad = [[0 for _ in range(self.Z_R+1)] for _ in range(len(fraction))]
                 for frac in range(len(fraction)):
                     i_P = int(round(self.Z_P * fraction[frac], 0))
-                    for i_R in range(1, self.Z_R):
+                    for i_R in range(0, self.Z_R+1):
                         grad[frac][i_R] = self.gradient(i_R, i_P)
-                    x = np.arange(0 + 1 / self.Z_R, 1, 1 / self.Z_R)
-                    y = [i[0] for i in grad[frac][1:self.Z_R]]
+                    y = [i[0] for i in grad[frac]]
 
                     ax.plot(x, y, line[b], color=colors[frac],
-                            label=str(round(fraction[frac] * 100, 0)) + " % * " + r"$Z_R$" + " ; " + r"$b_R$" + " = " + str(bs[b]))
+                            label=str(round(fraction[frac] * 100, 0)) + " % * " + r"$Z_P$" + " ; " + r"$b_R$" + " = " + str(bs[b]))
+                    ax.hlines(y=0, xmin=0, xmax=1, color="black", linewidth=0.5)
                     ax.set(xlabel=r"$i_R/Z_R$")
 
             if X == POOR:
-                x = np.arange(0 + 1 / self.Z_P, 1, 1 / self.Z_P)
-                grad = [[0 for _ in range(self.Z_P)] for _ in range(len(fraction))]
+                x = np.linspace(0, 1, self.Z_P+1)
+                grad = [[0 for _ in range(self.Z_P+1)] for _ in range(len(fraction))]
                 for frac in range(len(fraction)):
                     i_R = int(round(self.Z_R * fraction[frac], 0))
-                    for i_P in range(1, self.Z_P):
+                    for i_P in range(0, self.Z_P+1):
                         grad[frac][i_P] = self.gradient(i_R, i_P)
-                    y = [i[1] for i in grad[frac][1:self.Z_P]]
+                    y = [i[1] for i in grad[frac]]
                     ax.plot(x, y, line[b], color=colors[frac],
                             label=str(round(fraction[frac] * 100, 0)) + " % * " + r"$Z_R$" + " ; " + r"$b_R$" + " = " + str(bs[b]))
+                    ax.hlines(y=0, xmin=0, xmax=1, color="black", linewidth=0.5)
                     ax.set(xlabel=r"$i_P/Z_P$")
+        ax.set_xlim(xmin=0, xmax=1)
 
     def plotOneGraphFig2(self, ax):
         u, v, strength = self.create_gradient_matrices()
